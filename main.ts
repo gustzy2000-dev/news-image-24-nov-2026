@@ -1,14 +1,26 @@
-// News-image entry (Node 22, standard library only): the image is stored as base64
-// in image.b64 beside this file, and the program decodes it to /output/entry.png.
-// The image is a 1024x1024 JPEG of 24 November 2026 world news, 391 KB, under the 1 MiB gate.
+// News-image entry (Node 22, standard library only).
+// The entry image lives beside this file as a single line of base64
+// (image.b64) and is decoded to entry.png in the output directory.
 //
-// Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
+// Run locally with:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const OUTPUT_DIR = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
-mkdirSync(OUTPUT_DIR, { recursive: true });
-const b64 = readFileSync(new URL('./image.b64', import.meta.url), 'utf8');
-writeFileSync(join(OUTPUT_DIR, 'entry.png'), Buffer.from(b64.replace(/\s/g, ''), 'base64'));
+const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const imagePath = new URL('./image.b64', import.meta.url);
+
+mkdirSync(outputDir, { recursive: true });
+
+const encoded = readFileSync(imagePath, 'utf8').replace(/\s/g, '');
+const png = Buffer.from(encoded, 'base64');
+
+// Fail fast if the stored data is not a JPEG at all
+// (the file is named entry.png, but its bytes are JPEG).
+const jpegMagic = Buffer.from([0xff, 0xd8, 0xff]);
+if (!png.subarray(0, 3).equals(jpegMagic)) {
+  throw new Error('image.b64 does not decode to a JPEG');
+}
+
+writeFileSync(join(outputDir, 'entry.png'), png);
